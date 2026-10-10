@@ -1,0 +1,145 @@
+=== UNIT TESTS ===
+test_bad_date_is_rejected (test_propagation.PropagationTests.test_bad_date_is_rejected) ... ok
+test_duplicate_event_does_not_write_twice (test_propagation.PropagationTests.test_duplicate_event_does_not_write_twice) ... ok
+test_exhausted_failure_includes_ai_exception_analysis (test_propagation.PropagationTests.test_exhausted_failure_includes_ai_exception_analysis) ... ok
+test_exhausted_failure_is_reported_as_partial_failure (test_propagation.PropagationTests.test_exhausted_failure_is_reported_as_partial_failure) ... ok
+test_invalid_email_is_rejected_before_writes (test_propagation.PropagationTests.test_invalid_email_is_rejected_before_writes) ... ok
+test_retry_after_partial_failure_skips_already_successful_destinations (test_propagation.PropagationTests.test_retry_after_partial_failure_skips_already_successful_destinations) ... ok
+test_transient_failure_is_retried (test_propagation.PropagationTests.test_transient_failure_is_retried) ... ok
+test_valid_event_updates_all_destinations (test_propagation.PropagationTests.test_valid_event_updates_all_destinations) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.001s
+
+OK
+
+=== MCP SERVER SYNTAX CHECK ===
+Command: python -m py_compile mcp_server.py
+Result: passed (no output)
+
+=== DEMO OUTPUT ===
+Exception analyzer: OfflineDemoAnalyzer
+Offline mode: Claude API is not called. Set ANTHROPIC_API_KEY to enable live Claude analysis.
+
+=== Scenario 1: valid change; transient failure recovers ===
+{'destinations': {'cohort_tracker': {'attempts': 1, 'status': 'success'},
+                  'equipment': {'attempts': 2, 'status': 'success'},
+                  'okta_lumos': {'attempts': 1, 'status': 'success'},
+                  'workday': {'attempts': 1, 'status': 'success'}},
+ 'employee_id': 'E101',
+ 'event_id': 'evt-1001',
+ 'status': 'success'}
+
+=== Scenario 2: duplicate event is a no-op ===
+{'destinations': {},
+ 'event_id': 'evt-1001',
+ 'reason': 'Event already processed; no downstream writes performed',
+ 'status': 'duplicate'}
+
+=== Scenario 3: invalid record is rejected before writes ===
+{'destinations': {},
+ 'reason': 'Empty required fields: name',
+ 'status': 'rejected'}
+
+=== Scenario 4: exhausted failure triggers AI exception analysis ===
+{'destinations': {'cohort_tracker': {'attempts': 1, 'status': 'success'},
+                  'equipment': {'ai_analysis': {'issue': 'The Equipment '
+                                                         'connector failed '
+                                                         'after 3 attempts.',
+                                                'provider': 'offline_demo_mock',
+                                                'recommendation': 'Check '
+                                                                  'connector '
+                                                                  'health and '
+                                                                  'credentials, '
+                                                                  'then retry '
+                                                                  'after the '
+                                                                  'underlying '
+                                                                  'issue is '
+                                                                  'resolved.',
+                                                'requires_human_review': True},
+                                'attempts': 3,
+                                'error': 'Simulated temporary failure in '
+                                         'Equipment',
+                                'manual_review_required': True,
+                                'status': 'failed'},
+                  'okta_lumos': {'attempts': 1, 'status': 'success'},
+                  'workday': {'attempts': 1, 'status': 'success'}},
+ 'employee_id': 'E103',
+ 'event_id': 'evt-1003',
+ 'status': 'partial_failure'}
+
+=== Audit entries ===
+[{'attempt': 1,
+  'destination': 'Workday',
+  'employee_id': 'E101',
+  'event_id': 'evt-1001',
+  'status': 'success'},
+ {'attempt': 1,
+  'destination': 'Okta/Lumos',
+  'employee_id': 'E101',
+  'event_id': 'evt-1001',
+  'status': 'success'},
+ {'attempt': 1,
+  'destination': 'Equipment',
+  'employee_id': 'E101',
+  'event_id': 'evt-1001',
+  'message': 'Simulated temporary failure in Equipment',
+  'status': 'retry'},
+ {'attempt': 2,
+  'destination': 'Equipment',
+  'employee_id': 'E101',
+  'event_id': 'evt-1001',
+  'status': 'success'},
+ {'attempt': 1,
+  'destination': 'Cohort Tracker',
+  'employee_id': 'E101',
+  'event_id': 'evt-1001',
+  'status': 'success'},
+ {'employee_id': 'E101', 'event_id': 'evt-1001', 'status': 'success'},
+ {'event_id': 'evt-1001',
+  'message': 'Already processed',
+  'status': 'duplicate'},
+ {'event_id': 'evt-1002',
+  'message': 'Empty required fields: name',
+  'status': 'rejected'},
+ {'attempt': 1,
+  'destination': 'Workday',
+  'employee_id': 'E103',
+  'event_id': 'evt-1003',
+  'status': 'success'},
+ {'attempt': 1,
+  'destination': 'Okta/Lumos',
+  'employee_id': 'E103',
+  'event_id': 'evt-1003',
+  'status': 'success'},
+ {'attempt': 1,
+  'destination': 'Equipment',
+  'employee_id': 'E103',
+  'event_id': 'evt-1003',
+  'message': 'Simulated temporary failure in Equipment',
+  'status': 'retry'},
+ {'attempt': 2,
+  'destination': 'Equipment',
+  'employee_id': 'E103',
+  'event_id': 'evt-1003',
+  'message': 'Simulated temporary failure in Equipment',
+  'status': 'retry'},
+ {'attempt': 3,
+  'destination': 'Equipment',
+  'employee_id': 'E103',
+  'event_id': 'evt-1003',
+  'message': 'Simulated temporary failure in Equipment',
+  'status': 'failed'},
+ {'destination': 'Equipment',
+  'employee_id': 'E103',
+  'event_id': 'evt-1003',
+  'provider': 'offline_demo_mock',
+  'recommendation': 'Check connector health and credentials, then retry after '
+                    'the underlying issue is resolved.',
+  'status': 'exception_analysis'},
+ {'attempt': 1,
+  'destination': 'Cohort Tracker',
+  'employee_id': 'E103',
+  'event_id': 'evt-1003',
+  'status': 'success'},
+ {'employee_id': 'E103', 'event_id': 'evt-1003', 'status': 'partial_failure'}]
